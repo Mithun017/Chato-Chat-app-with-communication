@@ -22,6 +22,16 @@ function App() {
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
+    // Auth State
+    const [authMode, setAuthMode] = useState('login'); // 'login' or 'signup'
+    const [formData, setFormData] = useState({
+        name: '',
+        phone: '',
+        password: ''
+    });
+    const [authError, setAuthError] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
+
     const messagesEndRef = useRef(null);
     const typingTimeoutRef = useRef(null);
     const emojiPickerRef = useRef(null);
@@ -62,6 +72,11 @@ function App() {
         newSocket.on('connect', () => {
             console.log('✅ Connected to server! Socket ID:', newSocket.id);
             setIsConnected(true);
+            // Emit join event immediately after connection
+            if (username) {
+                console.log('🔗 Emitting join for:', username);
+                newSocket.emit('join', { username });
+            }
         });
 
         newSocket.on('disconnect', (reason) => {
@@ -138,6 +153,11 @@ function App() {
             }
         });
 
+        newSocket.on('join_response', (data) => {
+            console.log('✅ Join response:', data);
+            setActiveUsers(data.active_users || []);
+        });
+
         setSocket(newSocket);
 
         // Cleanup only on unmount
@@ -145,7 +165,7 @@ function App() {
             console.log('🧹 Cleaning up socket connection');
             newSocket.disconnect();
         };
-    }, [username]); // Re-run if username changes to ensure sound logic works
+    }, [isJoined, username]); // Re-run if joined status or username changes
 
     // Fetch initial messages
     useEffect(() => {
@@ -160,6 +180,42 @@ function App() {
                 .catch(err => console.error('Error fetching messages:', err));
         }
     }, [isJoined]);
+
+    const handleAuth = async (e) => {
+        e.preventDefault();
+        setAuthError('');
+        setIsLoading(true);
+
+        const endpoint = authMode === 'login' ? '/api/login' : '/api/signup';
+
+        try {
+            const response = await fetch(`${SOCKET_URL}${endpoint}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(formData)
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Authentication failed');
+            }
+
+            console.log('Auth successful:', data);
+            setUsername(data.user.name); // Set username from response
+            setIsJoined(true); // Trigger socket connection
+
+        } catch (err) {
+            console.error('Auth error:', err);
+            setAuthError(err.message);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleInputChange = (e) => {
+        setFormData({ ...formData, [e.target.name]: e.target.value });
+    };
 
     const handleJoin = (e) => {
         e.preventDefault();
@@ -245,32 +301,72 @@ function App() {
                         <div className="login-icon">
                             <MessageSquare size={48} color="#25D366" />
                         </div>
-                        <h1>Welcome to ChatApp</h1>
-                        <p>Connect with friends instantly</p>
+                        <h1>{authMode === 'login' ? 'Welcome Back' : 'Create Account'}</h1>
+                        <p>{authMode === 'login' ? 'Login to continue chatting' : 'Sign up to get started'}</p>
                     </div>
-                    <form onSubmit={handleJoin} className="login-form">
+
+                    {authError && <div className="auth-error">{authError}</div>}
+
+                    <form onSubmit={handleAuth} className="login-form">
+                        {authMode === 'signup' && (
+                            <div className="input-group">
+                                <input
+                                    type="text"
+                                    name="name"
+                                    placeholder="Full Name"
+                                    value={formData.name}
+                                    onChange={handleInputChange}
+                                    className="username-input"
+                                    required
+                                />
+                            </div>
+                        )}
                         <div className="input-group">
                             <input
-                                type="text"
-                                placeholder="Enter your username"
-                                value={username}
-                                onChange={(e) => setUsername(e.target.value)}
+                                type="tel"
+                                name="phone"
+                                placeholder="Phone Number"
+                                value={formData.phone}
+                                onChange={handleInputChange}
                                 className="username-input"
-                                autoFocus
-                                maxLength={20}
+                                required
                             />
                         </div>
+                        <div className="input-group">
+                            <input
+                                type="password"
+                                name="password"
+                                placeholder="Password"
+                                value={formData.password}
+                                onChange={handleInputChange}
+                                className="username-input"
+                                required
+                            />
+                        </div>
+
                         <button
                             type="submit"
                             className="join-button"
-                            disabled={!username.trim() || !isConnected}
+                            disabled={isLoading}
                         >
-                            {isConnected ? 'Start Chatting' : 'Connecting...'}
+                            {isLoading ? 'Please wait...' : (authMode === 'login' ? 'Login' : 'Sign Up')}
                         </button>
                     </form>
-                    <div className="connection-status">
-                        <span className={`status-dot ${isConnected ? 'connected' : 'disconnected'}`}></span>
-                        {isConnected ? 'Server Online' : 'Connecting to Server...'}
+
+                    <div className="auth-switch">
+                        <p>
+                            {authMode === 'login' ? "Don't have an account? " : "Already have an account? "}
+                            <button
+                                className="switch-btn"
+                                onClick={() => {
+                                    setAuthMode(authMode === 'login' ? 'signup' : 'login');
+                                    setAuthError('');
+                                    setFormData({ name: '', phone: '', password: '' });
+                                }}
+                            >
+                                {authMode === 'login' ? 'Sign Up' : 'Login'}
+                            </button>
+                        </p>
                     </div>
                 </div>
             </div>

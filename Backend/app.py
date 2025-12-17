@@ -6,6 +6,7 @@ from datetime import datetime
 import os
 from dotenv import load_dotenv
 from bson.objectid import ObjectId
+from werkzeug.security import generate_password_hash, check_password_hash
 
 load_dotenv()
 
@@ -34,11 +35,69 @@ def index():
     return jsonify({
         'status': 'Chat API is running',
         'endpoints': {
-            'GET /api/messages': 'Get all messages',
-            'POST /api/messages': 'Send a message',
             'WebSocket': 'Connect via Socket.IO for real-time chat'
         }
     })
+
+@app.route('/api/signup', methods=['POST'])
+def signup():
+    try:
+        data = request.json
+        name = data.get('name')
+        phone = data.get('phone')
+        password = data.get('password')
+
+        if not all([name, phone, password]):
+            return jsonify({'error': 'Missing required fields'}), 400
+
+        # Check if user already exists
+        if users_collection.find_one({'phone': phone}):
+            return jsonify({'error': 'Phone number already registered'}), 409
+
+        # Hash password
+        hashed_password = generate_password_hash(password)
+
+        # Create user
+        user = {
+            'name': name,
+            'phone': phone,
+            'password': hashed_password,
+            'created_at': datetime.utcnow()
+        }
+        users_collection.insert_one(user)
+
+        return jsonify({'message': 'User created successfully', 'user': {'name': name, 'phone': phone}}), 201
+
+    except Exception as e:
+        print(f"[ERROR] Signup error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/login', methods=['POST'])
+def login():
+    try:
+        data = request.json
+        phone = data.get('phone')
+        password = data.get('password')
+
+        if not all([phone, password]):
+            return jsonify({'error': 'Missing credentials'}), 400
+
+        user = users_collection.find_one({'phone': phone})
+
+        if user and check_password_hash(user['password'], password):
+            return jsonify({
+                'message': 'Login successful',
+                'user': {
+                    'name': user['name'],
+                    'phone': user['phone']
+                }
+            }), 200
+        
+        return jsonify({'error': 'Invalid phone number or password'}), 401
+
+    except Exception as e:
+        print(f"[ERROR] Login error: {e}")
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/messages', methods=['GET'])
 def get_messages():
