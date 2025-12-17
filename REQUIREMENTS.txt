@@ -1,0 +1,56 @@
+PROJECT REQUIREMENTS DOCUMENT
+=============================
+
+1. PROJECT OVERVIEW
+-------------------
+A real-time chat application designed to facilitate instant messaging between users on a local network. The application mimics modern messaging platforms (like WhatsApp) with a premium, dark-themed UI.
+
+2. FUNCTIONAL REQUIREMENTS
+--------------------------
+2.1 User Authentication
+    - Users can join the chat by entering a unique username.
+    - No password required (session-based for simplicity).
+
+2.2 Real-Time Messaging
+    - Instant message delivery using WebSockets.
+    - Support for text messages and emojis.
+    - Messages are broadcast to all connected clients immediately.
+
+2.3 User Presence
+    - Real-time "Active Users" list.
+    - Immediate updates when users join or leave.
+    - Typing indicators showing who is currently typing.
+
+2.4 Message History
+    - Persistent storage of messages.
+    - New users see previous chat history upon joining.
+
+2.5 Notifications
+    - Sound notifications for incoming messages from other users.
+    - Visual indicators for connection status (Online/Offline).
+
+3. NON-FUNCTIONAL REQUIREMENTS
+------------------------------
+3.1 Performance
+    - Low latency message delivery (< 100ms).
+    - Smooth UI animations (60fps).
+
+3.2 Reliability
+    - Automatic reconnection handling if the server connection is lost.
+    - Duplicate message prevention.
+
+3.3 Usability
+    - Responsive design (Mobile and Desktop compatible).
+    - Intuitive UI with WhatsApp-inspired aesthetics.
+    - Dark mode by default for eye comfort.
+
+3.4 Compatibility
+    - Works on modern web browsers (Chrome, Firefox, Edge, Safari).
+    - Accessible via local network IP (0.0.0.0).
+
+4. UI/UX REQUIREMENTS
+---------------------
+- Theme: Dark mode with specific Green accents (#25D366).
+- Layout: Sidebar for users (collapsible on mobile), Main chat area.
+- Visuals: Glassmorphism effects, message bubbles with tails, animated transitions.
+- Assets: Lucide icons, Emoji picker integration.

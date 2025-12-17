@@ -1,0 +1,78 @@
+LOW-LEVEL DESIGN (LLD) DOCUMENT
+===============================
+
+1. FRONTEND DESIGN (React)
+--------------------------
+
+1.1 Component Structure
+    - App.jsx (Root Component)
+        |-- State Management (useState, useEffect)
+        |-- Socket Initialization
+        |-- Event Handlers (handleJoin, handleSendMessage, handleTyping)
+        |-- UI Render
+            |-- Login Screen
+            |-- Chat Container
+                |-- Sidebar (Active Users List)
+                |-- Chat Header (Connection Status)
+                |-- Messages List (Scrollable Area)
+                |-- Input Area (Text Input, Emoji Picker, Send Button)
+
+1.2 State Variables
+    - socket: Socket.IO client instance.
+    - messages: Array of message objects.
+    - activeUsers: Array of strings (usernames).
+    - typingUsers: Array of strings (currently typing).
+    - isConnected: Boolean (connection status).
+    - showEmojiPicker: Boolean (UI toggle).
+    - isSidebarOpen: Boolean (Mobile UI toggle).
+
+1.3 External Libraries
+    - socket.io-client: WebSocket communication.
+    - emoji-picker-react: Emoji keyboard.
+    - lucide-react: SVG Icons.
+
+2. BACKEND DESIGN (Flask)
+-------------------------
+
+2.1 Modules
+    - app.py: Main entry point.
+    - Config: MongoDB URI, Secret Key.
+
+2.2 Data Models (MongoDB)
+    Collection: messages
+    {
+        "_id": ObjectId,
+        "username": String,
+        "message": String,
+        "timestamp": DateTime
+    }
+
+2.3 In-Memory Storage
+    - active_users: Dictionary { session_id: username }
+      Used to track connected users mapped to their socket session IDs.
+
+2.4 Socket Events (API)
+
+    | Event Name      | Direction | Payload | Description |
+    |-----------------|-----------|---------|-------------|
+    | connect         | C -> S    | None    | Client connects to server. |
+    | join            | C -> S    | {username} | User registers username. |
+    | join_response   | S -> C    | {status, active_users} | Confirmation of join. |
+    | send_message    | C -> S    | {username, message} | User sends a text. |
+    | new_message     | S -> C    | {username, message, timestamp} | Broadcast message to all. |
+    | typing          | C -> S    | {username, isTyping} | User starts/stops typing. |
+    | user_typing     | S -> C    | {username, isTyping} | Broadcast typing status. |
+    | user_joined     | S -> C    | {username, active_users} | Notify all of new user. |
+    | user_left       | S -> C    | {username, active_users} | Notify all of user exit. |
+    | disconnect      | C -> S    | None    | Client disconnects. |
+
+2.5 REST API Endpoints
+    - GET /api/messages
+      Returns: JSON object { "messages": [...] }
+      Purpose: Load chat history on initial connection.
+
+3. SECURITY & CONFIGURATION
+---------------------------
+- CORS: Allowed origins ["*"] for development flexibility.
+- Threading: Async mode set to "threading" for Windows compatibility.
+- Host: 0.0.0.0 to allow external access within local network.

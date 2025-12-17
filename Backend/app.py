@@ -5,6 +5,7 @@ from pymongo import MongoClient
 from datetime import datetime
 import os
 from dotenv import load_dotenv
+from bson.objectid import ObjectId
 
 load_dotenv()
 
@@ -145,6 +146,30 @@ def handle_typing(data):
         'username': data.get('username', 'Anonymous'),
         'isTyping': data.get('isTyping', False)
     }, skip_sid=request.sid)
+
+@socketio.on('delete_message')
+def handle_delete_message(data):
+    """Handle message deletion"""
+    try:
+        message_id = data.get('message_id')
+        if not message_id:
+            return
+            
+        print(f"[DELETE] Request to delete message: {message_id}")
+        
+        # Delete from database
+        result = messages_collection.delete_one({'_id': ObjectId(message_id)})
+        
+        if result.deleted_count > 0:
+            print(f"[DELETE] Successfully deleted message: {message_id}")
+            # Broadcast deletion to all clients
+            socketio.emit('message_deleted', {'message_id': message_id})
+        else:
+            print(f"[DELETE] Message not found: {message_id}")
+            
+    except Exception as e:
+        print(f"[ERROR] Error deleting message: {e}")
+        emit('error', {'message': str(e)})
 
 if __name__ == '__main__':
     PORT = int(os.getenv('PORT', 5000))

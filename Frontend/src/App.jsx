@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import io from 'socket.io-client';
 import EmojiPicker from 'emoji-picker-react';
-import { Send, Smile, Menu, X, Users, MessageSquare, ChevronDown } from 'lucide-react';
+import { Send, Smile, Menu, X, Users, MessageSquare, Trash2 } from 'lucide-react';
 import './App.css';
 
 // Use dynamic URL based on current hostname
@@ -96,6 +96,12 @@ function App() {
             });
         });
 
+        // Handle message deletion
+        newSocket.on('message_deleted', (data) => {
+            console.log('🗑️ Message deleted:', data.message_id);
+            setMessages((prevMessages) => prevMessages.filter(msg => msg._id !== data.message_id));
+        });
+
         newSocket.on('user_joined', (data) => {
             console.log('👋 User joined:', data.username, '| Active users:', data.active_users);
             // Update active users list immediately
@@ -177,8 +183,16 @@ function App() {
             setInputMessage('');
             setShowEmojiPicker(false);
 
-            // Stop typing indicator
             socket.emit('typing', { username, isTyping: false });
+        }
+    };
+
+    const handleDeleteMessage = (messageId) => {
+        if (socket && isJoined) {
+            if (window.confirm('Are you sure you want to delete this message?')) {
+                console.log('🗑️ Deleting message:', messageId);
+                socket.emit('delete_message', { message_id: messageId });
+            }
         }
     };
 
@@ -336,9 +350,21 @@ function App() {
                                                 <span className="message-username">{msg.username}</span>
                                             </div>
                                         )}
-                                        <div className="message-content">
-                                            {msg.message}
-                                            <span className="message-time">{formatTime(msg.timestamp)}</span>
+                                        <div className="message-content-wrapper">
+                                            <div className="message-content">
+                                                {msg.message}
+                                                <span className="message-time">{formatTime(msg.timestamp)}</span>
+                                            </div>
+                                            {/* Delete button only for own messages */}
+                                            {msg.username === username && (
+                                                <button
+                                                    className="delete-button"
+                                                    onClick={() => handleDeleteMessage(msg._id)}
+                                                    title="Delete message"
+                                                >
+                                                    <Trash2 size={14} />
+                                                </button>
+                                            )}
                                         </div>
                                     </>
                                 )}

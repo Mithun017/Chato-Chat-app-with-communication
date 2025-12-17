@@ -1,0 +1,52 @@
+HIGH-LEVEL DESIGN (HLD) DOCUMENT
+================================
+
+1. ARCHITECTURE OVERVIEW
+------------------------
+The Chat Application follows a Client-Server architecture pattern, utilizing WebSockets for full-duplex, real-time communication.
+
+[ Client (Browser) ] <====> [ WebSocket / HTTP ] <====> [ Server (Python Flask) ] <====> [ Database (MongoDB) ]
+
+2. SYSTEM COMPONENTS
+--------------------
+
+2.1 Frontend (Client Side)
+    - Technology: React.js (Vite).
+    - Role: Renders the UI, handles user interactions, manages local state, and maintains the persistent Socket.IO connection.
+    - Key Features:
+        - Single Page Application (SPA).
+        - Responsive Design (Mobile/Desktop).
+        - Real-time state updates (Messages, Active Users).
+
+2.2 Backend (Server Side)
+    - Technology: Python Flask + Flask-SocketIO.
+    - Role: Orchestrates communication, manages sessions, and handles data persistence.
+    - Concurrency: Threading mode (compatible with Windows/standard Python).
+    - Key Features:
+        - Event-based communication.
+        - REST API for initial data fetch.
+        - Broadcasting logic.
+
+2.3 Database (Storage)
+    - Technology: MongoDB (Atlas or Local).
+    - Role: Stores chat history.
+    - Collections:
+        - `messages`: Stores all chat messages with timestamps and metadata.
+
+3. DATA FLOW
+------------
+
+3.1 User Join Flow
+    Client -> Connects via Socket.IO -> Emits 'join' event -> Server adds to active list -> Server broadcasts 'user_joined' -> All Clients update UI.
+
+3.2 Message Flow
+    Client A sends message -> Server receives 'send_message' -> Server saves to MongoDB -> Server broadcasts 'new_message' -> All Clients receive and display.
+
+3.3 Disconnect Flow
+    Client closes tab -> Server detects disconnect -> Server removes from active list -> Server broadcasts 'user_left' -> Remaining Clients update UI.
+
+4. INFRASTRUCTURE & DEPLOYMENT
+------------------------------
+- Development: Localhost (127.0.0.1) or Local Network (0.0.0.0).
+- Port: 5000 (Backend), 3000 (Frontend).
+- Network: CORS enabled for cross-origin resource sharing.
