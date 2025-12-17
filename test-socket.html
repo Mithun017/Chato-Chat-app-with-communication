@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Socket.IO Connection Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            color: #667eea;
+        }
+
+        .status {
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+
+        .connected {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .disconnected {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .log {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+
+        .log-entry {
+            padding: 5px;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+
+        button:hover {
+            background: #5568d3;
+        }
+
+        input {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            width: 300px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>🔌 Socket.IO Connection Test</h1>
+
+        <div id="status" class="status disconnected">
+            ❌ Disconnected
+        </div>
+
+        <div style="margin: 20px 0;">
+            <input type="text" id="username" placeholder="Enter username" value="TestUser">
+            <button onclick="joinChat()">Join Chat</button>
+            <button onclick="sendTestMessage()">Send Test Message</button>
+            <button onclick="clearLogs()">Clear Logs</button>
+        </div>
+
+        <h3>📋 Event Logs:</h3>
+        <div id="logs" class="log"></div>
+    </div>
+
+    <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
+    <script>
+        const SOCKET_URL = `http://${window.location.hostname}:5000`;
+        let socket;
+        let messageCount = 0;
+
+        function log(message, type = 'info') {
+            const logsDiv = document.getElementById('logs');
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            const timestamp = new Date().toLocaleTimeString();
+            entry.innerHTML = `<strong>[${timestamp}]</strong> ${message}`;
+            logsDiv.appendChild(entry);
+            logsDiv.scrollTop = logsDiv.scrollHeight;
+            console.log(message);
+        }
+
+        function updateStatus(connected) {
+            const statusDiv = document.getElementById('status');
+            if (connected) {
+                statusDiv.className = 'status connected';
+                statusDiv.textContent = '✅ Connected to ' + SOCKET_URL;
+            } else {
+                statusDiv.className = 'status disconnected';
+                statusDiv.textContent = '❌ Disconnected';
+            }
+        }
+
+        function initSocket() {
+            log('🔄 Initializing socket connection to: ' + SOCKET_URL);
+
+            socket = io(SOCKET_URL, {
+                transports: ['websocket', 'polling'],
+                reconnection: true,
+                reconnectionDelay: 1000,
+                reconnectionAttempts: 5
+            });
+
+            socket.on('connect', () => {
+                log('✅ Connected! Socket ID: ' + socket.id, 'success');
+                updateStatus(true);
+            });
+
+            socket.on('disconnect', (reason) => {
+                log('❌ Disconnected. Reason: ' + reason, 'error');
+                updateStatus(false);
+            });
+
+            socket.on('connect_error', (error) => {
+                log('⚠️ Connection error: ' + error.message, 'error');
+                updateStatus(false);
+            });
+
+            socket.on('new_message', (message) => {
+                messageCount++;
+                log(`📨 NEW MESSAGE #${messageCount} received: ${message.username}: ${message.message}`);
+            });
+
+            socket.on('user_joined', (data) => {
+                log(`👋 User joined: ${data.username}. Active users: ${data.active_users.length}`);
+            });
+
+            socket.on('user_left', (data) => {
+                log(`👋 User left: ${data.username}`);
+            });
+
+            socket.on('join_response', (data) => {
+                log(`✅ Join successful! Active users: ${JSON.stringify(data.active_users)}`);
+            });
+        }
+
+        function joinChat() {
+            const username = document.getElementById('username').value;
+            if (!socket || !socket.connected) {
+                log('⚠️ Not connected! Trying to connect...', 'error');
+                initSocket();
+                setTimeout(() => joinChat(), 1000);
+                return;
+            }
+            log(`🚀 Joining chat as: ${username}`);
+            socket.emit('join', { username });
+        }
+
+        function sendTestMessage() {
+            const username = document.getElementById('username').value;
+            if (!socket || !socket.connected) {
+                log('⚠️ Not connected! Please join first.', 'error');
+                return;
+            }
+            const message = `Test message ${Date.now()}`;
+            log(`📤 Sending message: ${message}`);
+            socket.emit('send_message', { username, message });
+        }
+
+        function clearLogs() {
+            document.getElementById('logs').innerHTML = '';
+            messageCount = 0;
+        }
+
+        // Auto-initialize on page load
+        window.onload = () => {
+            log('🌐 Page loaded. Backend URL: ' + SOCKET_URL);
+            initSocket();
+        };
+    </script>
+</body>
+
+</html>
